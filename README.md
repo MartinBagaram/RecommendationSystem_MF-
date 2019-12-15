@@ -19,5 +19,6 @@ matrix_completion
 │   ├── syngenta_crop_challenge-run_on.ipynb
 │   └── syngenta_data_exploration.ipynb
 ├── README.md
-└── syngenta_crop_challenge.ipynb <----  Duplicated
+└── syngenta_crop_challenge.ipynb
+
 
