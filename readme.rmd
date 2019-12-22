@@ -9,11 +9,19 @@ matrix_completion
 │       ├── split2.txt
 │       ├── split3_k35.txt
 │       └── split3.txt
+├── matrix_completion
+│   ├── __init__.py
+│   ├── mat_fact.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-36.pyc
+│   │   ├── mat_fact.cpython-36.pyc
+│   │   └── utilis.cpython-36.pyc
+│   └── utilis.py
 ├── notebooks
 │   ├── borrowed_method.ipynb
 │   ├── data_exploration.ipynb
 │   ├── syngenta_crop_challenge.ipynb
 │   ├── syngenta_crop_challenge-run_on.ipynb
-│   └── syngenta_data_exploration.ipynb
-├── README.md
+│   └── syngenta_data_exploration.ipynb <-- Code of interest
+├── readme.rmd
 └── syngenta_crop_challenge.ipynb
