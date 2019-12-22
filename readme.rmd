@@ -12,10 +12,6 @@ matrix_completion
 ├── matrix_completion
 │   ├── __init__.py
 │   ├── mat_fact.py
-│   ├── __pycache__
-│   │   ├── __init__.cpython-36.pyc
-│   │   ├── mat_fact.cpython-36.pyc
-│   │   └── utilis.cpython-36.pyc
 │   └── utilis.py
 ├── notebooks
 │   ├── borrowed_method.ipynb
