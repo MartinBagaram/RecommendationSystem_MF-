@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import mean_squared_error
+from sklearn.linear_model import LinearRegression
 from joblib import Parallel, delayed
 from .utilis import test_train_split
 
@@ -127,33 +128,7 @@ class MF():
 
 
 class MFSLess():
-    
-    # def __init__(self, R, K, alpha, beta, iterations, lambda_bias, test=None):
-    #     """
-    #     Perform matrix factorization to predict empty
-    #     entries in a matrix.
         
-    #     Arguments
-    #     - R (ndarray)   : user-item rating matrix
-    #     - K (int)       : number of latent dimensions
-    #     - alpha (float) : learning rate
-    #     - beta (float)  : regularization parameter
-    #     """
-    #     if isinstance(R, pd.DataFrame):
-    #         R = R.values
-    #     if test is not None and isinstance(test, pd.DataFrame):
-    #         test = test.values
-    #     self.R = R
-    #     self.num_users, self.num_items = R.shape
-    #     self.K = K
-    #     self.alpha = alpha
-    #     self.beta = beta
-    #     self.lambda_bias = lambda_bias
-    #     self.iterations = iterations
-    #     self.test = test
-    #     self.best_it = np.infty
-    #     self.best_mse = np.infty
-    
     def train(self, R, K, alpha, beta, iterations, lambda_bias, test=None):
         """
         """
@@ -377,4 +352,32 @@ class MatrixFactorization():
              k, alpha, beta, lam_bias = key
         mf = MF(pred_data, k, alpha, beta, self.global_best[key]['iter'], lam_bias)
         mf.train()
-        return mf.full_matrix()
+        self.pred = mf.full_matrix()
+        return self.pred
+
+    def _abline(self):
+        ""
+        gca = plt.gca()
+        gca.set_autoscale_on(False)
+        gca.plot(gca.get_xlim(),gca.get_ylim(), 'red')
+    
+    def plot_predicted_actual(self, test):
+        """
+        """
+        if isinstance(test, pd.DataFrame):
+            test =  test.values
+        
+        pred = self.predict(test)
+        x = test[test.nonzero()].flatten()
+        y = pred[test.nonzero()].flatten()
+        plt.scatter(x, y, alpha = 0.5)
+        plt.xlabel("Actual")
+        plt.ylabel("Predicted")
+        self._abline()
+        plt.show()
+
+        model = LinearRegression()
+        x_ = x.copy().reshape(-1, 1)
+        model.fit(x_, y)
+        print('coefficient of determination:', model.score(x_, y))
+        print(f'y={model.intercept_} + {model.coef_} * x')
