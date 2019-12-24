@@ -324,8 +324,10 @@ class MatrixFactorization():
         """
         assert self.istrained, "Please train the model first using 'grid_search method'"
         for (k, alpha, beta, lam_bias) in self.best_param:
-            self.best_param[(k, alpha, beta, lam_bias)]['mean'] = np.mean(self.best_param[(k, alpha, beta, lam_bias)]['mse'])
-            self.best_param[(k, alpha, beta, lam_bias)]['sd'] = np.std(self.best_param[(k, alpha, beta, lam_bias)]['mse'])
+            list_mse = self.best_param[(k, alpha, beta, lam_bias)]['mse']
+            self.best_param[(k, alpha, beta, lam_bias)]['mean'] = np.mean(list_mse)
+            self.best_param[(k, alpha, beta, lam_bias)]['sd'] = np.std(list_mse)
+            index_best_iteration = list_mse.index(min(list_mse))
             # if there is already  key then check if its values are worse than the one in best_parameters
             if len(self.global_best) > 0:
                 for key in self.global_best:
@@ -335,13 +337,14 @@ class MatrixFactorization():
                          self.global_best[key]['sd'] > self.best_param[(k, alpha, beta, lam_bias)]['sd']):
                         # if that is the case then replace the current key by a new one and update the values
                         self.global_best.pop(key)
+                        
                         self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
                                                                 'sd':self.best_param[(k, alpha, beta, lam_bias)]['sd'],
-                                                                'iter': np.max(self.best_param[(k, alpha, beta, lam_bias)]['iter'])}                        
+                                                                'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration]}                        
             else: # empty dictionary
                 self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
                                                                 'sd': self.best_param[(k, alpha, beta, lam_bias)]['sd'],
-                                                               'iter': int(np.mean(self.best_param[(k, alpha, beta, lam_bias)]['iter']))}
+                                                               'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration]}
                     
 
     def predict(self, pred_data):
@@ -350,10 +353,20 @@ class MatrixFactorization():
         assert len(self.global_best) == 1, 'Call the method fit first' # we only have one key that is the best parameters
         for key in self.global_best:
              k, alpha, beta, lam_bias = key
+        columns = None
+        # store row and columns so that the predicted data will have proper columns and rows
+        if isinstance(pred_data, pd.DataFrame):
+            columns = pred_data.columns
+            rows = pred_data.index
+            pred_data = pred_data.values
+        # intantiate the class to run one prediction
         mf = MF(pred_data, k, alpha, beta, self.global_best[key]['iter'], lam_bias)
         mf.train()
-        self.pred = mf.full_matrix()
-        return self.pred
+        pred = mf.full_matrix()
+        # create the data frame for the prediction
+        if columns is not None:
+            pred = pd.DataFrame(data=pred, index=rows, columns=columns)
+        return pred
 
     def _abline(self):
         ""
