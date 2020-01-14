@@ -324,27 +324,30 @@ class MatrixFactorization():
         """
         assert self.istrained, "Please train the model first using 'grid_search method'"
         for (k, alpha, beta, lam_bias) in self.best_param:
-            list_mse = self.best_param[(k, alpha, beta, lam_bias)]['mse']
+            list_mse = self.best_param[(k, alpha, beta, lam_bias)]['mse'].copy()
             self.best_param[(k, alpha, beta, lam_bias)]['mean'] = np.mean(list_mse)
             self.best_param[(k, alpha, beta, lam_bias)]['sd'] = np.std(list_mse)
             index_best_iteration = list_mse.index(min(list_mse))
             # if there is already  key then check if its values are worse than the one in best_parameters
             if len(self.global_best) > 0:
+                # get the key it it should be the only element
+                assert len(self.global_best) == 1, 'There is an error and you have more than one best'
                 for key in self.global_best:
-                    val = self.global_best[key]['mean']
-                    if val > self.best_param[(k, alpha, beta, lam_bias)]['mean'] or \
-                        (val == self.best_param[(k, alpha, beta, lam_bias)]['mean'] and \
-                         self.global_best[key]['sd'] > self.best_param[(k, alpha, beta, lam_bias)]['sd']):
-                        # if that is the case then replace the current key by a new one and update the values
-                        self.global_best.pop(key)
-                        
-                        self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
-                                                                'sd':self.best_param[(k, alpha, beta, lam_bias)]['sd'],
-                                                                'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration]}                        
+                    best_mean_mse = self.global_best[key]['mean']
+                # check if the best global parameter should be updated
+                if best_mean_mse > self.best_param[(k, alpha, beta, lam_bias)]['mean'] or \
+                    (best_mean_mse == self.best_param[(k, alpha, beta, lam_bias)]['mean'] and \
+                        self.global_best[key]['sd'] > self.best_param[(k, alpha, beta, lam_bias)]['sd']):
+                    # if that is the case then replace the current key by a new one and update the values
+                    self.global_best.clear()
+                    
+                    self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
+                                                            'sd':self.best_param[(k, alpha, beta, lam_bias)]['sd'],
+                                                            'iter': int(np.mean(self.best_param[(k, alpha, beta, lam_bias)]['iter']))}                        
             else: # empty dictionary
                 self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
                                                                 'sd': self.best_param[(k, alpha, beta, lam_bias)]['sd'],
-                                                               'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration]}
+                                                               'iter': int(np.mean(self.best_param[(k, alpha, beta, lam_bias)]['iter']))} # [index_best_iteration]
                     
 
     def predict(self, pred_data):
