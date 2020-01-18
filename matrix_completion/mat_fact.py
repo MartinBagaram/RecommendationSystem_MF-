@@ -343,11 +343,11 @@ class MatrixFactorization():
                     
                     self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
                                                             'sd':self.best_param[(k, alpha, beta, lam_bias)]['sd'],
-                                                            'iter': int(np.mean(self.best_param[(k, alpha, beta, lam_bias)]['iter']))}                        
+                                                            'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration]}                        
             else: # empty dictionary
                 self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
                                                                 'sd': self.best_param[(k, alpha, beta, lam_bias)]['sd'],
-                                                               'iter': int(np.mean(self.best_param[(k, alpha, beta, lam_bias)]['iter']))} # [index_best_iteration]
+                                                               'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration]} # [index_best_iteration]
                     
 
     def predict(self, pred_data):
