@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from copy import deepcopy
 from sklearn.metrics import mean_squared_error
 from sklearn.linear_model import LinearRegression
 from joblib import Parallel, delayed
@@ -57,6 +58,7 @@ class MF():
         # Perform stochastic gradient descent for number of iterations
         training_process = []
         test_process = []
+        best_var = {}
         for i in range(self.iterations):
             np.random.shuffle(self.samples)
             self.sgd()
@@ -71,9 +73,14 @@ class MF():
                     self.best_mse = test_error
                     self.best_it = i+1
     #                 self.best_solution = Solution(self.b_u.copy(), self.b_i.copy(), self.P.copy(), self.Q.copy(), self.b)
+                    best_var['b'] = deepcopy(self.b)
+                    best_var['bu'] = deepcopy(self.b_u)
+                    best_var['bi'] = deepcopy(self.b_i)
+                    best_var['P'] = deepcopy(self.P)
+                    best_var['Q'] = deepcopy(self.Q)
                 test_process.append(test_error)
 
-        return training_process, test_process, self.best_mse, self.best_it
+        return training_process, test_process, self.best_mse, self.best_it, best_var
 
     def mse(self):
         """
@@ -158,30 +165,35 @@ class MFSLess():
             for j in range(num_items)
             if R[i, j] > 0
         ]
-        
+        best_var = {}
         # Perform stochastic gradient descent for number of iterations
         training_process = []
         test_process = []
         if test is not None:
             for i in range(iterations):
                 np.random.shuffle(samples)
-                self.sgd(samples, P, Q, alpha, beta, lambda_bias, b_u, b_i, b)
+                b_u, b_i, P, Q, b = self.sgd(samples, P, Q, alpha, beta, lambda_bias, b_u, b_i, b)
                 # if we have test data then we are training the model and we should store 
                 # all these elements. If there is no test data then we are doing a prediction
                 mse = self.mse(R, b_u, b_i, P, Q, b)
                 training_process.append((i, mse))
-                temp_pred = self.full_matrix(b_u, b_i, P, Q, b)
+                temp_pred = self.full_matrix(b_u, b_i, P, Q, b).copy()
                 test_error = self.get_mse(temp_pred, test)
                 if test_error < best_mse:
                     best_mse = test_error
                     best_it = i+1
+                    best_var['b'] = deepcopy(b)
+                    best_var['bu'] = deepcopy(b_u)
+                    best_var['bi'] = deepcopy(b_i)
+                    best_var['P'] = deepcopy(P)
+                    best_var['Q'] = deepcopy(Q)
     #                 self.best_solution = Solution(self.b_u.copy(), self.b_i.copy(), self.P.copy(), self.Q.copy(), self.b)
                 test_process.append(test_error)
-            return training_process, test_process, best_mse, best_it, K, alpha, beta, lambda_bias
+            return training_process, test_process, best_mse, best_it, K, alpha, beta, lambda_bias, best_var
         else:
             for i in range(iterations):
                 np.random.shuffle(samples)
-                self.sgd(samples, P, Q, alpha, beta, lambda_bias, b_u, b_i, b)
+                b_u, b_i, P, Q, b = self.sgd(samples, P, Q, alpha, beta, lambda_bias, b_u, b_i, b)
         return b_u, b_i, P, Q, b
 
     def mse(self, R, b_u, b_i, P, Q, b):
@@ -215,6 +227,7 @@ class MFSLess():
             # Update user and item latent feature matrices
             P[i, :] += alpha * (e * Q[j, :] - beta * P[i,:])
             Q[j, :] += alpha * (e * P_i - beta * Q[j,:])
+        return b_u, b_i, P, Q, b
 
     def get_rating(self, i, j, b, b_u, b_i, P, Q):
         """
@@ -243,6 +256,7 @@ class MatrixFactorization():
         self.best_param = dict()
         self.istrained = False
         self.global_best = dict()
+        
     
     def grid_search(self, parameters, kfold=5, iter_max=100, paral=True, n_cores=-1):
         """ Does an exhaustive search of the grid and find the root mean square for each parameter in 
@@ -289,13 +303,15 @@ class MatrixFactorization():
     
                 # Loop through the results and store the with the keys
                 for result in results:
-                    _, _, best_mse, best_it, k, alpha, beta, lam_bias = result
+                    _, _, best_mse, best_it, k, alpha, beta, lam_bias, best_var = result
                     if (k, alpha, beta, lam_bias) not in self.best_param:
                         self.best_param[(k, alpha, beta, lam_bias)] = dict()
                         self.best_param[(k, alpha, beta, lam_bias)]['mse'] = []
                         self.best_param[(k, alpha, beta, lam_bias)]['iter'] = []
+                        self.best_param[(k, alpha, beta, lam_bias)]['best_var'] = []
                     self.best_param[(k, alpha, beta, lam_bias)]['mse'].append(best_mse)
                     self.best_param[(k, alpha, beta, lam_bias)]['iter'].append(best_it)
+                    self.best_param[(k, alpha, beta, lam_bias)]['best_var'].append(best_var)
                 
         else: # run serial version
             for i in range(len(trains)):
@@ -305,13 +321,15 @@ class MatrixFactorization():
                             for lam_bias in lambda_bias:
                                 # K, alpha, beta, iterations, lambda_bias, test=None
                                 mf = MF(trains[i], k, alpha, beta, iter_max, lam_bias, tests[i])
-                                _, _, best_mse, best_it = mf.train()
+                                _, _, best_mse, best_it, best_var = mf.train()
                                 if (k, alpha, beta, lam_bias) not in self.best_param:
                                     self.best_param[(k, alpha, beta, lam_bias)] = dict()
                                     self.best_param[(k, alpha, beta, lam_bias)]['mse'] = []
                                     self.best_param[(k, alpha, beta, lam_bias)]['iter'] = []
+                                    self.best_param[(k, alpha, beta, lam_bias)]['best_var'] = []
                                 self.best_param[(k, alpha, beta, lam_bias)]['mse'].append(best_mse)
                                 self.best_param[(k, alpha, beta, lam_bias)]['iter'].append(best_it)
+                                self.best_param[(k, alpha, beta, lam_bias)]['best_var'].append(best_var)
 
         self.istrained = True
         return self.best_param
@@ -343,33 +361,46 @@ class MatrixFactorization():
                     
                     self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
                                                             'sd':self.best_param[(k, alpha, beta, lam_bias)]['sd'],
-                                                            'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration]}                        
+                                                            'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration],
+                                                            'best_var': self.best_param[(k, alpha, beta, lam_bias)]['best_var'][index_best_iteration]}                        
             else: # empty dictionary
                 self.global_best[(k, alpha, beta, lam_bias)] = {'mean': self.best_param[(k, alpha, beta, lam_bias)]['mean'], 
                                                                 'sd': self.best_param[(k, alpha, beta, lam_bias)]['sd'],
-                                                               'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration]} # [index_best_iteration]
+                                                               'iter': self.best_param[(k, alpha, beta, lam_bias)]['iter'][index_best_iteration],
+                                                               'best_var': self.best_param[(k, alpha, beta, lam_bias)]['best_var'][index_best_iteration]} # [index_best_iteration]
                     
 
     def predict(self, pred_data):
         """ Predicts t
         """
         assert len(self.global_best) == 1, 'Call the method fit first' # we only have one key that is the best parameters
-        for key in self.global_best:
-             k, alpha, beta, lam_bias = key
-        columns = None
-        # store row and columns so that the predicted data will have proper columns and rows
-        if isinstance(pred_data, pd.DataFrame):
-            columns = pred_data.columns
-            rows = pred_data.index
-            pred_data = pred_data.values
+        for key, val in self.global_best.items():
+            #  k, alpha, beta, lam_bias = key
+            pass
+        
         # intantiate the class to run one prediction
-        mf = MF(pred_data, k, alpha, beta, self.global_best[key]['iter'], lam_bias)
-        mf.train()
-        pred = mf.full_matrix()
+
+        # mf = MF(pred_data, k, alpha, beta, self.global_best[key]['iter'], lam_bias)
+        # mf.train()
+        # pred = mf.full_matrix()
+        
         # create the data frame for the prediction
-        if columns is not None:
-            pred = pd.DataFrame(data=pred, index=rows, columns=columns)
-        return pred
+        # if columns is not None:
+        #     pred = pd.DataFrame(data=pred, index=rows, columns=columns)
+        vars_ = val['best_var']
+        b, b_u, b_i, Q, P = vars_['b'], vars_['bu'], vars_['bi'], vars_['Q'], vars_['P']
+        pred =  b_u[:,np.newaxis] + b_i[np.newaxis:,] + P.dot(Q.T)  + b
+        # store row and columns so that the predicted data will have proper columns and rows
+        pred_df = None
+        if isinstance(self.data, pd.DataFrame):
+            rows = list(self.data.index)
+            columns = list(self.data.columns)
+            pred_df = pd.DataFrame(data=pred, columns=columns, index=rows)
+            col_not_to_predict = [c for c in columns if c not in pred_data.columns]
+            row_not_to_predict = [r for r in rows if r not in pred_data.index]
+            pred_df.drop(col_not_to_predict, axis=1, inplace=True)
+            pred_df.drop(row_not_to_predict, axis=0, inplace=True)
+        return pred  if pred_df is None else pred_df
 
     def _abline(self):
         ""
@@ -380,10 +411,12 @@ class MatrixFactorization():
     def plot_predicted_actual(self, test):
         """
         """
-        if isinstance(test, pd.DataFrame):
-            test =  test.values
+        # if isinstance(test, pd.DataFrame):
+            # test =  test.values
         
         pred = self.predict(test)
+        pred = pred.values
+        test = test.values
         x = test[test.nonzero()].flatten()
         y = pred[test.nonzero()].flatten()
         plt.scatter(x, y, alpha = 0.5)
